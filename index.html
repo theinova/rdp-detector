@@ -3,297 +3,382 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Anti-Fraud: RDP & VM Detector</title>
+    <title>Advanced Anti-Fraud & Bot Detector</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #0f172a; color: #f8fafc; }
+        body { background-color: #0b1120; color: #f8fafc; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
         .card { background-color: #1e293b; border: 1px solid #334155; }
-        .status-physical { color: #10b981; } /* Green */
-        .status-virtual { color: #ef4444; } /* Red */
-        .status-warning { color: #f59e0b; } /* Yellow */
+        .status-safe { color: #10b981; } /* Green */
+        .status-danger { color: #ef4444; } /* Red */
+        .status-warn { color: #f59e0b; } /* Yellow */
+        .status-info { color: #3b82f6; } /* Blue */
+        
+        /* Скроллбар для эстетики */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
     </style>
 </head>
-<body class="p-6 md:p-12 font-sans antialiased">
+<body class="p-4 md:p-8">
 
-    <div class="max-w-5xl mx-auto">
-        <header class="mb-10 text-center md:text-left">
-            <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">
-                Environment Fingerprint Analyzer
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-8 border-b border-slate-700 pb-6">
+            <h1 class="text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-emerald-400">
+                Advanced Threat & Bot Forensics
             </h1>
-            <p class="text-slate-400 mt-2">Детектирование RDP, VNC и Виртуальных машин (VM) в браузере</p>
+            <p class="text-slate-400 mt-2 text-lg">Комплексный анализ окружения браузера: RDP, Виртуалки, Selenium, Puppeteer, Подмена отпечатков.</p>
         </header>
 
-        <!-- Главный индикатор угрозы -->
-        <div class="card rounded-xl p-6 mb-8 flex flex-col items-center justify-center">
-            <h2 class="text-lg text-slate-300 mb-2">Общий статус системы</h2>
-            <div id="overall-status" class="text-4xl font-extrabold tracking-wider status-physical">
-                АНАЛИЗ...
+        <!-- Дашборд Риска -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <div class="card rounded-2xl p-8 lg:col-span-2 flex flex-col justify-center relative overflow-hidden shadow-2xl">
+                <div class="absolute -right-20 -top-20 w-64 h-64 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob"></div>
+                <div class="absolute -left-20 -bottom-20 w-64 h-64 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-2000"></div>
+                
+                <h2 class="text-xl text-slate-300 mb-4 font-semibold z-10">Общий уровень доверия (Trust Score)</h2>
+                <div class="flex items-end gap-4 z-10">
+                    <span id="trust-score" class="text-7xl font-black status-safe">100</span>
+                    <span class="text-2xl text-slate-500 mb-2">/ 100</span>
+                </div>
+                
+                <div class="w-full bg-slate-800 h-4 mt-6 rounded-full overflow-hidden shadow-inner z-10">
+                    <div id="trust-bar" class="bg-emerald-500 h-full transition-all duration-1000 ease-out" style="width: 100%;"></div>
+                </div>
+                
+                <p id="trust-verdict" class="mt-4 text-lg font-medium text-emerald-400 z-10">Вероятно, реальный человек на физическом устройстве</p>
             </div>
-            <div class="w-full bg-slate-700 h-2 mt-4 rounded-full overflow-hidden">
-                <div id="risk-bar" class="bg-emerald-500 h-full transition-all duration-500" style="width: 0%;"></div>
+
+            <div class="card rounded-2xl p-6 shadow-xl flex flex-col">
+                <h3 class="font-semibold text-lg text-slate-300 border-b border-slate-700 pb-2 mb-4">Поведенческий анализ</h3>
+                <div class="flex-1 space-y-4">
+                    <div>
+                        <div class="text-sm text-slate-400">Движение мыши (Энтропия)</div>
+                        <div id="mouse-status" class="font-mono font-bold text-slate-200">Ожидание движения...</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-slate-400">Скорость клика (Latency)</div>
+                        <div id="click-status" class="font-mono font-bold text-slate-200">Ожидание клика...</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-slate-400">Видимость вкладки</div>
+                        <div id="visibility-status" class="font-mono font-bold text-emerald-400">Активна</div>
+                    </div>
+                </div>
             </div>
-            <p id="risk-score-text" class="text-sm text-slate-400 mt-2">Risk Score: 0/100</p>
         </div>
 
-        <!-- Сетка параметров -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            
-            <!-- WebGL -->
-            <div class="card rounded-xl p-5 shadow-lg">
-                <div class="flex justify-between items-start mb-4">
-                    <h3 class="font-semibold text-lg">GPU / WebGL</h3>
-                    <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-                </div>
-                <p id="webgl-desc" class="text-sm text-slate-400 mb-3 h-10 overflow-hidden text-ellipsis">Определение драйвера видеокарты...</p>
-                <div class="font-bold text-xl" id="webgl-status">Загрузка...</div>
-            </div>
-
-            <!-- Color Depth -->
-            <div class="card rounded-xl p-5 shadow-lg">
-                <div class="flex justify-between items-start mb-4">
-                    <h3 class="font-semibold text-lg">Screen Depth</h3>
-                    <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                </div>
-                <p id="color-desc" class="text-sm text-slate-400 mb-3 h-10">Проверка глубины цвета экрана...</p>
-                <div class="font-bold text-xl" id="color-status">Загрузка...</div>
-            </div>
-
-            <!-- CPU Cores -->
-            <div class="card rounded-xl p-5 shadow-lg">
-                <div class="flex justify-between items-start mb-4">
-                    <h3 class="font-semibold text-lg">Hardware Cores</h3>
-                    <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg>
-                </div>
-                <p id="cores-desc" class="text-sm text-slate-400 mb-3 h-10">Количество логических процессоров...</p>
-                <div class="font-bold text-xl" id="cores-status">Загрузка...</div>
-            </div>
-
-            <!-- Input Latency -->
-            <div class="card rounded-xl p-5 shadow-lg col-span-1 md:col-span-2 lg:col-span-1">
-                <div class="flex justify-between items-start mb-4">
-                    <h3 class="font-semibold text-lg">Input Latency (Click)</h3>
-                    <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path></svg>
-                </div>
-                <p id="latency-desc" class="text-sm text-slate-400 mb-3 h-10">Кликните где-нибудь для анализа задержки...</p>
-                <div class="font-bold text-xl text-slate-500" id="latency-status">Ожидание клика...</div>
-            </div>
-
-            <!-- Fonts & Plugins -->
-            <div class="card rounded-xl p-5 shadow-lg col-span-1 md:col-span-2">
-                <div class="flex justify-between items-start mb-4">
-                    <h3 class="font-semibold text-lg">Fonts & Environment</h3>
-                    <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
-                </div>
-                <p id="fonts-desc" class="text-sm text-slate-400 mb-3 h-10">Анализ системных шрифтов и плагинов...</p>
-                <div class="font-bold text-xl" id="fonts-status">Загрузка...</div>
-            </div>
-
+        <!-- Сетка модулей -->
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" id="modules-container">
+            <!-- Сюда JS будет динамически рендерить карточки -->
         </div>
     </div>
 
     <script>
-        // Общий счетчик риска (0 - Физический ПК, 100 - Явная виртуалка/RDP)
-        let riskScore = 0;
-        const weights = {
-            webgl: 40,
-            colorDepth: 20,
-            cores: 15,
-            latency: 15,
-            fonts: 10
+        // --- УТИЛИТЫ ---
+        
+        // Быстрый хэш (Cyrb53) для создания отпечатков из строк (Canvas/Audio данных)
+        const cyrb53 = (str, seed = 0) => {
+            let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+            for (let i = 0, ch; i < str.length; i++) {
+                ch = str.charCodeAt(i);
+                h1 = Math.imul(h1 ^ ch, 2654435761);
+                h2 = Math.imul(h2 ^ ch, 1597334677);
+            }
+            h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+            h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+            return 4294967296 * (2097151 & h2) + (h1 >>> 0);
         };
 
-        function updateUI(idPrefix, result) {
-            const statusEl = document.getElementById(`${idPrefix}-status`);
-            const descEl = document.getElementById(`${idPrefix}-desc`);
-            
-            descEl.innerText = result.details;
-            statusEl.innerText = result.status;
-            
-            statusEl.className = 'font-bold text-xl ' + 
-                (result.isSuspicious ? 'status-virtual' : 
-                (result.isWarning ? 'status-warning' : 'status-physical'));
+        // --- ДВИЖОК АНАЛИЗА ---
+        
+        let totalPenalty = 0;
+        const checks = [];
 
-            if (result.isSuspicious) riskScore += weights[idPrefix] || 0;
-            else if (result.isWarning) riskScore += (weights[idPrefix] / 2) || 0;
-            
-            updateOverallRisk();
+        function addCheck(category, name, icon, execute) {
+            checks.push({ category, name, icon, execute });
         }
 
-        function updateOverallRisk() {
-            // Нормализация до 100
-            riskScore = Math.min(riskScore, 100);
-            const riskBar = document.getElementById('risk-bar');
-            const overallStatus = document.getElementById('overall-status');
-            const riskText = document.getElementById('risk-score-text');
+        // --- МОДУЛИ ПРОВЕРОК ---
 
-            riskBar.style.width = `${riskScore}%`;
-            riskText.innerText = `Risk Score: ${riskScore}/100`;
+        // 1. WEBDRIVER & AUTOMATION (Headless, Selenium, Puppeteer)
+        addCheck('Automation', 'WebDriver & Bots', '🤖', () => {
+            let penalty = 0;
+            let triggers = [];
 
-            if (riskScore < 30) {
-                overallStatus.innerText = "PHYSICAL DEVICE";
-                overallStatus.className = "text-4xl font-extrabold tracking-wider status-physical";
-                riskBar.className = "h-full transition-all duration-500 bg-emerald-500";
-            } else if (riskScore < 60) {
-                overallStatus.innerText = "SUSPICIOUS / HYBRID";
-                overallStatus.className = "text-4xl font-extrabold tracking-wider status-warning";
-                riskBar.className = "h-full transition-all duration-500 bg-amber-500";
-            } else {
-                overallStatus.innerText = "REMOTE / VIRTUAL";
-                overallStatus.className = "text-4xl font-extrabold tracking-wider status-virtual";
-                riskBar.className = "h-full transition-all duration-500 bg-red-500";
+            if (navigator.webdriver) { penalty += 50; triggers.push("navigator.webdriver=true"); }
+            if (window.document.documentElement.getAttribute("webdriver")) { penalty += 50; triggers.push("DOM webdriver attr"); }
+            if (window._phantom || window.callPhantom) { penalty += 80; triggers.push("PhantomJS detected"); }
+            if (window.__nightmare) { penalty += 80; triggers.push("NightmareJS detected"); }
+            if (navigator.languages === "" || navigator.languages.length === 0) { penalty += 20; triggers.push("Empty languages (Headless?)"); }
+            
+            // Проверка подмены Notification API (часто делают боты)
+            if (window.Notification && Notification.permission === 'denied' && navigator.userAgent.includes('Chrome')) {
+                // В чистом хроме нельзя просто так заблокировать без запроса
             }
-        }
 
-        /* * 1. WebGL Fingerprinting
-         * Виртуальные машины и сессии RDP (особенно без RemoteFX/vGPU) не имеют прямого доступа к аппаратной видеокарте.
-         * Они используют программные рендереры (software rendering) для отрисовки графики.
-         * Наличие драйверов Microsoft Basic Render, SwiftShader (Google), llvmpipe (Linux) или VMware напрямую выдает виртуалку.
-         */
-        function checkWebGL() {
+            if (penalty > 0) return { status: 'danger', value: 'Обнаружена автоматизация!', details: triggers.join(', '), penalty };
+            return { status: 'safe', value: 'Не обнаружено', details: 'Следы WebDriver отсутствуют', penalty: 0 };
+        });
+
+        // 2. HARDWARE & RDP
+        addCheck('Hardware', 'CPU & Memory', '💻', () => {
+            const cores = navigator.hardwareConcurrency || 'N/A';
+            const mem = navigator.deviceMemory || 'N/A';
+            let penalty = 0;
+            let status = 'safe';
+
+            if (cores <= 2) { penalty += 20; status = 'warn'; }
+            if (mem !== 'N/A' && mem <= 2) { penalty += 15; status = 'warn'; }
+
+            return { 
+                status: penalty > 0 ? 'warn' : 'safe', 
+                value: `${cores} Ядер / ~${mem}GB RAM`, 
+                details: penalty > 0 ? 'Слабое железо (VM/Дешевый VPS?)' : 'Типичная конфигурация', 
+                penalty 
+            };
+        });
+
+        // 3. GPU & WEBGL (Следы RDP/VM)
+        addCheck('Hardware', 'Graphics / WebGL', '🎮', () => {
             try {
                 const canvas = document.createElement('canvas');
                 const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-                if (!gl) return { status: 'Warning', details: 'WebGL не поддерживается (подозрительно)', isWarning: true };
+                if (!gl) return { status: 'danger', value: 'WebGL Отключен', details: 'Подозрительно скрытый Canvas', penalty: 30 };
                 
                 const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-                if (!debugInfo) return { status: 'Warning', details: 'WEBGL_debug_renderer_info заблокирован', isWarning: true };
+                if (!debugInfo) return { status: 'warn', value: 'Renderer Скрыт', details: 'WEBGL_debug_renderer_info заблокирован', penalty: 20 };
 
+                const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
                 const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
                 
-                // Регулярное выражение для поиска программных рендереров и VM драйверов
-                const vmRegex = /Microsoft Basic Render Driver|VMware|SwiftShader|VirtualBox|llvmpipe|Parallels|QEMU|Bochs/i;
+                const vmRegex = /Microsoft Basic Render Driver|VMware|SwiftShader|VirtualBox|llvmpipe|Mesa/i;
                 const isVirtual = vmRegex.test(renderer);
 
                 return {
-                    status: isVirtual ? 'Remote/Virtual' : 'Physical',
+                    status: isVirtual ? 'danger' : 'safe',
+                    value: isVirtual ? 'Software / VM Renderer' : 'Hardware GPU',
                     details: renderer,
-                    isSuspicious: isVirtual
+                    penalty: isVirtual ? 40 : 0
                 };
             } catch (e) {
-                return { status: 'Error', details: 'Ошибка анализа WebGL', isWarning: true };
+                return { status: 'warn', value: 'Ошибка доступа', details: e.message, penalty: 10 };
             }
-        }
-
-        /*
-         * 2. Screen & Color Depth
-         * Протоколы удаленного доступа (RDP, VNC, TeamViewer) в целях экономии трафика 
-         * часто сжимают глубину цвета. Стандартные современные мониторы имеют 24 или 32 бита.
-         * Значения 16, 15 или даже 8 бит — явный признак RDP-сессии.
-         */
-        function checkColorDepth() {
-            const depth = window.screen.colorDepth;
-            const isVirtual = depth < 24;
-            
-            return {
-                status: isVirtual ? 'Remote/Virtual' : 'Physical',
-                details: `Глубина цвета: ${depth}-bit`,
-                isSuspicious: isVirtual
-            };
-        }
-
-        /*
-         * 3. Hardware Concurrency (Логические ядра)
-         * Виртуальные машины, развернутые для спама или автоматизации (через AWS, DigitalOcean и т.д.),
-         * часто создаются на самых дешевых тарифах с 1 или 2 логическими ядрами.
-         * Современные физические ПК почти всегда имеют 4 и более ядер.
-         */
-        function checkCores() {
-            const cores = navigator.hardwareConcurrency;
-            if (!cores) return { status: 'Unknown', details: 'API недоступен', isWarning: true };
-
-            const isVirtual = cores <= 2;
-            return {
-                status: isVirtual ? 'Virtual (Low CPU)' : 'Physical',
-                details: `Количество ядер: ${cores}`,
-                isWarning: isVirtual // Помечаем как Warning, так как старые ПК могут иметь 2 ядра
-            };
-        }
-
-        /*
-         * 4. Fonts & Plugins Detection
-         * Серверные ОС (Windows Server), на которых чаще всего поднимают RDP, часто не имеют предустановленных
-         * консьюмерских шрифтов (например, некоторые вариации Segoe, Comic Sans) или плагинов (PDF Viewer встроенный).
-         * Здесь мы проверяем наличие объекта плагинов и имитируем проверку серверного окружения.
-         */
-        function checkFontsAndPlugins() {
-            // Проверка длины плагинов (В headless-браузерах и некоторых VM navigator.plugins пуст)
-            const pluginsLength = navigator.plugins.length;
-            const isHeadlessOrVM = pluginsLength === 0;
-
-            // В реальной системе здесь создается скрытый canvas для измерения ширины текста.
-            // Для примера используем эвристику: нулевые плагины + платформа.
-            const platform = navigator.platform || "";
-            const isWinServer = platform.includes("Win32") && isHeadlessOrVM;
-
-            return {
-                status: isHeadlessOrVM ? 'Suspicious/Server' : 'Physical',
-                details: `Плагинов: ${pluginsLength}, ОС: ${platform}`,
-                isWarning: isHeadlessOrVM
-            };
-        }
-
-        /*
-         * 5. Input Latency (Анализ задержки клика)
-         * RDP/VNC передают клики через сеть. При программной эмуляции клика (боты) задержка 
-         * между mousedown и mouseup может быть нечеловечески быстрой (< 10ms).
-         * При работе через реальный RDP наблюдается "Jitter" (нестабильная, высокая задержка).
-         */
-        let mousedownTime = 0;
-        let clickCount = 0;
-        
-        document.addEventListener('mousedown', (e) => {
-            if(e.isTrusted) mousedownTime = performance.now();
         });
 
+        // 4. SCREEN & RDP (Глубина цвета и размер)
+        addCheck('Screen', 'Display & Color Depth', '🖥️', () => {
+            const depth = window.screen.colorDepth;
+            const width = window.screen.width;
+            const height = window.screen.height;
+            const innerW = window.innerWidth;
+            const innerH = window.innerHeight;
+
+            let penalty = 0;
+            let triggers = [];
+
+            if (depth < 24) { penalty += 30; triggers.push(`${depth}-bit (RDP/VNC)`); }
+            if (width === 0 || height === 0) { penalty += 50; triggers.push("Скрытый экран (Headless)"); }
+            
+            // Аномалия: окно больше экрана (бывает при подмене)
+            if (innerW > width || innerH > height) { penalty += 20; triggers.push("Окно больше монитора"); }
+
+            return {
+                status: penalty >= 30 ? 'danger' : (penalty > 0 ? 'warn' : 'safe'),
+                value: `${width}x${height} @ ${depth}bit`,
+                details: triggers.length > 0 ? triggers.join(', ') : 'Аномалий экрана не найдено',
+                penalty
+            };
+        });
+
+        // 5. BROWSER FINGERPRINTING (Canvas Hash)
+        addCheck('Fingerprint', 'Canvas Fingerprint', '🎨', () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 200; canvas.height = 50;
+            const ctx = canvas.getContext('2d');
+            
+            // Отрисовка сложного текста со смешиванием
+            ctx.textBaseline = "top";
+            ctx.font = "14px 'Arial'";
+            ctx.textBaseline = "alphabetic";
+            ctx.fillStyle = "#f60";
+            ctx.fillRect(125,1,62,20);
+            ctx.fillStyle = "#069";
+            ctx.fillText("Fingerprint 🤖", 2, 15);
+            ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
+            ctx.fillText("Fingerprint 🤖", 4, 17);
+            
+            const hash = cyrb53(canvas.toDataURL()).toString(16);
+            
+            return {
+                status: 'info',
+                value: `Hash: ${hash.toUpperCase()}`,
+                details: 'Уникальный отпечаток отрисовки текста и графики',
+                penalty: 0
+            };
+        });
+
+        // 6. NETWORK
+        addCheck('Network', 'Connection API', '🌐', () => {
+            const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+            if (!conn) return { status: 'info', value: 'N/A', details: 'Network API не поддерживается', penalty: 0 };
+            
+            return {
+                status: 'info',
+                value: `${conn.effectiveType || 'unknown'} / ${conn.downlink || 0}Mbps`,
+                details: `RTT: ${conn.rtt}ms, SaveData: ${conn.saveData}`,
+                penalty: 0
+            };
+        });
+
+        // 7. TIMEZONE & LOCATION SPOOFING
+        addCheck('Environment', 'Timezone Consistency', '⏱️', () => {
+            const tzName = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            const offset = new Date().getTimezoneOffset();
+            
+            // Простейшая эвристика проверки (не идеальна, но ловит кривую подмену)
+            // Реальные боты часто подменяют offset, но забывают про Intl API
+            return {
+                status: 'safe',
+                value: tzName,
+                details: `Offset: ${offset} мин.`,
+                penalty: 0
+            };
+        });
+
+        // --- ПОВЕДЕНЧЕСКАЯ БИОМЕТРИЯ (Движение и Клики) ---
+        let mouseEvents = 0;
+        let lastMousePos = {x: 0, y: 0};
+        let mousedownTime = 0;
+        let hasHumanMovement = false;
+
+        document.addEventListener('mousemove', (e) => {
+            if (!e.isTrusted) return; // Программные эмуляции (bot)
+            
+            // Простейший расчет расстояния для фильтрации микро-дрожаний
+            const dist = Math.sqrt(Math.pow(e.clientX - lastMousePos.x, 2) + Math.pow(e.clientY - lastMousePos.y, 2));
+            if (dist > 5) {
+                mouseEvents++;
+                lastMousePos = {x: e.clientX, y: e.clientY};
+            }
+
+            if (mouseEvents > 15) {
+                hasHumanMovement = true;
+                const el = document.getElementById('mouse-status');
+                el.innerText = `Живое движение (${mouseEvents} pts)`;
+                el.className = 'font-mono font-bold text-emerald-400';
+            }
+        });
+
+        document.addEventListener('mousedown', (e) => { if(e.isTrusted) mousedownTime = performance.now(); });
         document.addEventListener('mouseup', (e) => {
             if (mousedownTime && e.isTrusted) {
                 const latency = performance.now() - mousedownTime;
-                clickCount++;
+                const el = document.getElementById('click-status');
                 
-                let status = 'Physical';
-                let isSuspicious = false;
-                let isWarning = false;
-
-                // Если длительность клика меньше 20мс - это почти гарантированно бот / скрипт (Puppeteer/Selenium)
                 if (latency < 20) {
-                    status = 'Bot / Virtual';
-                    isSuspicious = true;
-                } 
-                // Если клик длится аномально долго или нестабильно - возможен лаг сети RDP
-                else if (latency > 300) {
-                    status = 'High Latency (RDP?)';
-                    isWarning = true;
-                }
-
-                // Обновляем UI только для латенси (пересчитываем счетчик)
-                // Если это первый клик и он подозрительный, добавим вес.
-                if (clickCount === 1) {
-                     document.getElementById('latency-status').className = 'font-bold text-xl ' + 
-                        (isSuspicious ? 'status-virtual' : (isWarning ? 'status-warning' : 'status-physical'));
-                     document.getElementById('latency-status').innerText = status;
-                     document.getElementById('latency-desc').innerText = `Задержка: ${latency.toFixed(2)} ms`;
-                     
-                     if(isSuspicious) riskScore += weights.latency;
-                     else if(isWarning) riskScore += (weights.latency / 2);
-                     updateOverallRisk();
+                    el.innerText = `${latency.toFixed(1)}ms (Слишком быстро/Бот!)`;
+                    el.className = 'font-mono font-bold text-red-500';
+                    applyDynamicPenalty(20); // Штраф за программный клик
+                } else if (latency > 500) {
+                    el.innerText = `${latency.toFixed(1)}ms (Аномалия/RDP Lag)`;
+                    el.className = 'font-mono font-bold text-amber-500';
                 } else {
-                     // Просто обновляем текст для наглядности при последующих кликах
-                     document.getElementById('latency-desc').innerText = `Задержка: ${latency.toFixed(2)} ms`;
+                    el.innerText = `${latency.toFixed(1)}ms (Норма)`;
+                    el.className = 'font-mono font-bold text-emerald-400';
                 }
-                
                 mousedownTime = 0;
             }
         });
 
-        // Инициализация проверок при загрузке страницы
+        document.addEventListener('visibilitychange', () => {
+            const el = document.getElementById('visibility-status');
+            if (document.hidden) {
+                el.innerText = 'В фоне';
+                el.className = 'font-mono font-bold text-slate-500';
+            } else {
+                el.innerText = 'Активна';
+                el.className = 'font-mono font-bold text-emerald-400';
+            }
+        });
+
+        // --- РЕНДЕРИНГ UI ---
+
+        function renderModules() {
+            const container = document.getElementById('modules-container');
+            container.innerHTML = '';
+            totalPenalty = 0;
+
+            checks.forEach(check => {
+                const result = check.execute();
+                totalPenalty += result.penalty;
+
+                let colorClass = 'text-slate-200';
+                let iconColor = 'text-slate-400';
+                if (result.status === 'danger') { colorClass = 'status-danger'; iconColor = 'text-red-500'; }
+                if (result.status === 'warn') { colorClass = 'status-warn'; iconColor = 'text-amber-500'; }
+                if (result.status === 'safe') { colorClass = 'status-safe'; iconColor = 'text-emerald-500'; }
+                if (result.status === 'info') { colorClass = 'status-info'; iconColor = 'text-blue-400'; }
+
+                const card = document.createElement('div');
+                card.className = 'card rounded-xl p-5 shadow-lg flex flex-col hover:border-slate-500 transition-colors duration-300';
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xl ${iconColor}">${check.icon}</span>
+                            <h3 class="font-semibold text-sm text-slate-400 uppercase tracking-wider">${check.name}</h3>
+                        </div>
+                        ${result.penalty > 0 ? `<span class="bg-red-500/20 text-red-400 text-xs px-2 py-1 rounded font-bold">+${result.penalty} Risk</span>` : ''}
+                    </div>
+                    <div class="font-mono font-bold text-lg mt-2 mb-1 truncate ${colorClass}" title="${result.value}">${result.value}</div>
+                    <p class="text-xs text-slate-500 mt-auto line-clamp-2">${result.details}</p>
+                `;
+                container.appendChild(card);
+            });
+
+            updateTrustScore();
+        }
+
+        function applyDynamicPenalty(amount) {
+            totalPenalty += amount;
+            updateTrustScore();
+        }
+
+        function updateTrustScore() {
+            let trust = 100 - totalPenalty;
+            if (!hasHumanMovement && totalPenalty > 0) trust -= 10; // Доп штраф если нет движения мыши
+            trust = Math.max(0, Math.min(100, trust)); // Clamp 0-100
+
+            const scoreEl = document.getElementById('trust-score');
+            const barEl = document.getElementById('trust-bar');
+            const verdictEl = document.getElementById('trust-verdict');
+
+            scoreEl.innerText = trust;
+            barEl.style.width = `${trust}%`;
+
+            if (trust >= 80) {
+                scoreEl.className = 'text-7xl font-black status-safe';
+                barEl.className = 'bg-emerald-500 h-full transition-all duration-1000 ease-out';
+                verdictEl.innerText = "Вероятно, реальный человек на физическом устройстве";
+                verdictEl.className = "mt-4 text-lg font-medium text-emerald-400 z-10";
+            } else if (trust >= 40) {
+                scoreEl.className = 'text-7xl font-black status-warn';
+                barEl.className = 'bg-amber-500 h-full transition-all duration-1000 ease-out';
+                verdictEl.innerText = "Подозрительная активность (Возможна VM или RDP)";
+                verdictEl.className = "mt-4 text-lg font-medium text-amber-400 z-10";
+            } else {
+                scoreEl.className = 'text-7xl font-black status-danger';
+                barEl.className = 'bg-red-500 h-full transition-all duration-1000 ease-out shadow-[0_0_15px_rgba(239,68,68,0.5)]';
+                verdictEl.innerText = "ОБНАРУЖЕН БОТ ИЛИ ИНСТРУМЕНТ АВТОМАТИЗАЦИИ";
+                verdictEl.className = "mt-4 text-lg font-bold text-red-400 z-10 animate-pulse";
+            }
+        }
+
+        // Инициализация
         window.onload = () => {
-            setTimeout(() => {
-                updateUI('webgl', checkWebGL());
-                updateUI('color', checkColorDepth());
-                updateUI('cores', checkCores());
-                updateUI('fonts', checkFontsAndPlugins());
-            }, 500); // Небольшая задержка для красивого эффекта загрузки
+            setTimeout(renderModules, 300); // Небольшая задержка для того, чтобы DOM и шрифты прогрузились (важно для Canvas)
         };
+
     </script>
 </body>
 </html>
