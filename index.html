@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anti-Fraud: RDP & VM Detector</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; }
+        .card { background-color: #1e293b; border: 1px solid #334155; }
+        .status-physical { color: #10b981; } /* Green */
+        .status-virtual { color: #ef4444; } /* Red */
+        .status-warning { color: #f59e0b; } /* Yellow */
+    </style>
+</head>
+<body class="p-6 md:p-12 font-sans antialiased">
+
+    <div class="max-w-5xl mx-auto">
+        <header class="mb-10 text-center md:text-left">
+            <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">
+                Environment Fingerprint Analyzer
+            </h1>
+            <p class="text-slate-400 mt-2">Детектирование RDP, VNC и Виртуальных машин (VM) в браузере</p>
+        </header>
+
+        <!-- Главный индикатор угрозы -->
+        <div class="card rounded-xl p-6 mb-8 flex flex-col items-center justify-center">
+            <h2 class="text-lg text-slate-300 mb-2">Общий статус системы</h2>
+            <div id="overall-status" class="text-4xl font-extrabold tracking-wider status-physical">
+                АНАЛИЗ...
+            </div>
+            <div class="w-full bg-slate-700 h-2 mt-4 rounded-full overflow-hidden">
+                <div id="risk-bar" class="bg-emerald-500 h-full transition-all duration-500" style="width: 0%;"></div>
+            </div>
+            <p id="risk-score-text" class="text-sm text-slate-400 mt-2">Risk Score: 0/100</p>
+        </div>
+
+        <!-- Сетка параметров -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            
+            <!-- WebGL -->
+            <div class="card rounded-xl p-5 shadow-lg">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="font-semibold text-lg">GPU / WebGL</h3>
+                    <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                </div>
+                <p id="webgl-desc" class="text-sm text-slate-400 mb-3 h-10 overflow-hidden text-ellipsis">Определение драйвера видеокарты...</p>
+                <div class="font-bold text-xl" id="webgl-status">Загрузка...</div>
+            </div>
+
+            <!-- Color Depth -->
+            <div class="card rounded-xl p-5 shadow-lg">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="font-semibold text-lg">Screen Depth</h3>
+                    <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                </div>
+                <p id="color-desc" class="text-sm text-slate-400 mb-3 h-10">Проверка глубины цвета экрана...</p>
+                <div class="font-bold text-xl" id="color-status">Загрузка...</div>
+            </div>
+
+            <!-- CPU Cores -->
+            <div class="card rounded-xl p-5 shadow-lg">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="font-semibold text-lg">Hardware Cores</h3>
+                    <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg>
+                </div>
+                <p id="cores-desc" class="text-sm text-slate-400 mb-3 h-10">Количество логических процессоров...</p>
+                <div class="font-bold text-xl" id="cores-status">Загрузка...</div>
+            </div>
+
+            <!-- Input Latency -->
+            <div class="card rounded-xl p-5 shadow-lg col-span-1 md:col-span-2 lg:col-span-1">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="font-semibold text-lg">Input Latency (Click)</h3>
+                    <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path></svg>
+                </div>
+                <p id="latency-desc" class="text-sm text-slate-400 mb-3 h-10">Кликните где-нибудь для анализа задержки...</p>
+                <div class="font-bold text-xl text-slate-500" id="latency-status">Ожидание клика...</div>
+            </div>
+
+            <!-- Fonts & Plugins -->
+            <div class="card rounded-xl p-5 shadow-lg col-span-1 md:col-span-2">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="font-semibold text-lg">Fonts & Environment</h3>
+                    <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                </div>
+                <p id="fonts-desc" class="text-sm text-slate-400 mb-3 h-10">Анализ системных шрифтов и плагинов...</p>
+                <div class="font-bold text-xl" id="fonts-status">Загрузка...</div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Общий счетчик риска (0 - Физический ПК, 100 - Явная виртуалка/RDP)
+        let riskScore = 0;
+        const weights = {
+            webgl: 40,
+            colorDepth: 20,
+            cores: 15,
+            latency: 15,
+            fonts: 10
+        };
+
+        function updateUI(idPrefix, result) {
+            const statusEl = document.getElementById(`${idPrefix}-status`);
+            const descEl = document.getElementById(`${idPrefix}-desc`);
+            
+            descEl.innerText = result.details;
+            statusEl.innerText = result.status;
+            
+            statusEl.className = 'font-bold text-xl ' + 
+                (result.isSuspicious ? 'status-virtual' : 
+                (result.isWarning ? 'status-warning' : 'status-physical'));
+
+            if (result.isSuspicious) riskScore += weights[idPrefix] || 0;
+            else if (result.isWarning) riskScore += (weights[idPrefix] / 2) || 0;
+            
+            updateOverallRisk();
+        }
+
+        function updateOverallRisk() {
+            // Нормализация до 100
+            riskScore = Math.min(riskScore, 100);
+            const riskBar = document.getElementById('risk-bar');
+            const overallStatus = document.getElementById('overall-status');
+            const riskText = document.getElementById('risk-score-text');
+
+            riskBar.style.width = `${riskScore}%`;
+            riskText.innerText = `Risk Score: ${riskScore}/100`;
+
+            if (riskScore < 30) {
+                overallStatus.innerText = "PHYSICAL DEVICE";
+                overallStatus.className = "text-4xl font-extrabold tracking-wider status-physical";
+                riskBar.className = "h-full transition-all duration-500 bg-emerald-500";
+            } else if (riskScore < 60) {
+                overallStatus.innerText = "SUSPICIOUS / HYBRID";
+                overallStatus.className = "text-4xl font-extrabold tracking-wider status-warning";
+                riskBar.className = "h-full transition-all duration-500 bg-amber-500";
+            } else {
+                overallStatus.innerText = "REMOTE / VIRTUAL";
+                overallStatus.className = "text-4xl font-extrabold tracking-wider status-virtual";
+                riskBar.className = "h-full transition-all duration-500 bg-red-500";
+            }
+        }
+
+        /* * 1. WebGL Fingerprinting
+         * Виртуальные машины и сессии RDP (особенно без RemoteFX/vGPU) не имеют прямого доступа к аппаратной видеокарте.
+         * Они используют программные рендереры (software rendering) для отрисовки графики.
+         * Наличие драйверов Microsoft Basic Render, SwiftShader (Google), llvmpipe (Linux) или VMware напрямую выдает виртуалку.
+         */
+        function checkWebGL() {
+            try {
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                if (!gl) return { status: 'Warning', details: 'WebGL не поддерживается (подозрительно)', isWarning: true };
+                
+                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                if (!debugInfo) return { status: 'Warning', details: 'WEBGL_debug_renderer_info заблокирован', isWarning: true };
+
+                const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+                
+                // Регулярное выражение для поиска программных рендереров и VM драйверов
+                const vmRegex = /Microsoft Basic Render Driver|VMware|SwiftShader|VirtualBox|llvmpipe|Parallels|QEMU|Bochs/i;
+                const isVirtual = vmRegex.test(renderer);
+
+                return {
+                    status: isVirtual ? 'Remote/Virtual' : 'Physical',
+                    details: renderer,
+                    isSuspicious: isVirtual
+                };
+            } catch (e) {
+                return { status: 'Error', details: 'Ошибка анализа WebGL', isWarning: true };
+            }
+        }
+
+        /*
+         * 2. Screen & Color Depth
+         * Протоколы удаленного доступа (RDP, VNC, TeamViewer) в целях экономии трафика 
+         * часто сжимают глубину цвета. Стандартные современные мониторы имеют 24 или 32 бита.
+         * Значения 16, 15 или даже 8 бит — явный признак RDP-сессии.
+         */
+        function checkColorDepth() {
+            const depth = window.screen.colorDepth;
+            const isVirtual = depth < 24;
+            
+            return {
+                status: isVirtual ? 'Remote/Virtual' : 'Physical',
+                details: `Глубина цвета: ${depth}-bit`,
+                isSuspicious: isVirtual
+            };
+        }
+
+        /*
+         * 3. Hardware Concurrency (Логические ядра)
+         * Виртуальные машины, развернутые для спама или автоматизации (через AWS, DigitalOcean и т.д.),
+         * часто создаются на самых дешевых тарифах с 1 или 2 логическими ядрами.
+         * Современные физические ПК почти всегда имеют 4 и более ядер.
+         */
+        function checkCores() {
+            const cores = navigator.hardwareConcurrency;
+            if (!cores) return { status: 'Unknown', details: 'API недоступен', isWarning: true };
+
+            const isVirtual = cores <= 2;
+            return {
+                status: isVirtual ? 'Virtual (Low CPU)' : 'Physical',
+                details: `Количество ядер: ${cores}`,
+                isWarning: isVirtual // Помечаем как Warning, так как старые ПК могут иметь 2 ядра
+            };
+        }
+
+        /*
+         * 4. Fonts & Plugins Detection
+         * Серверные ОС (Windows Server), на которых чаще всего поднимают RDP, часто не имеют предустановленных
+         * консьюмерских шрифтов (например, некоторые вариации Segoe, Comic Sans) или плагинов (PDF Viewer встроенный).
+         * Здесь мы проверяем наличие объекта плагинов и имитируем проверку серверного окружения.
+         */
+        function checkFontsAndPlugins() {
+            // Проверка длины плагинов (В headless-браузерах и некоторых VM navigator.plugins пуст)
+            const pluginsLength = navigator.plugins.length;
+            const isHeadlessOrVM = pluginsLength === 0;
+
+            // В реальной системе здесь создается скрытый canvas для измерения ширины текста.
+            // Для примера используем эвристику: нулевые плагины + платформа.
+            const platform = navigator.platform || "";
+            const isWinServer = platform.includes("Win32") && isHeadlessOrVM;
+
+            return {
+                status: isHeadlessOrVM ? 'Suspicious/Server' : 'Physical',
+                details: `Плагинов: ${pluginsLength}, ОС: ${platform}`,
+                isWarning: isHeadlessOrVM
+            };
+        }
+
+        /*
+         * 5. Input Latency (Анализ задержки клика)
+         * RDP/VNC передают клики через сеть. При программной эмуляции клика (боты) задержка 
+         * между mousedown и mouseup может быть нечеловечески быстрой (< 10ms).
+         * При работе через реальный RDP наблюдается "Jitter" (нестабильная, высокая задержка).
+         */
+        let mousedownTime = 0;
+        let clickCount = 0;
+        
+        document.addEventListener('mousedown', (e) => {
+            if(e.isTrusted) mousedownTime = performance.now();
+        });
+
+        document.addEventListener('mouseup', (e) => {
+            if (mousedownTime && e.isTrusted) {
+                const latency = performance.now() - mousedownTime;
+                clickCount++;
+                
+                let status = 'Physical';
+                let isSuspicious = false;
+                let isWarning = false;
+
+                // Если длительность клика меньше 20мс - это почти гарантированно бот / скрипт (Puppeteer/Selenium)
+                if (latency < 20) {
+                    status = 'Bot / Virtual';
+                    isSuspicious = true;
+                } 
+                // Если клик длится аномально долго или нестабильно - возможен лаг сети RDP
+                else if (latency > 300) {
+                    status = 'High Latency (RDP?)';
+                    isWarning = true;
+                }
+
+                // Обновляем UI только для латенси (пересчитываем счетчик)
+                // Если это первый клик и он подозрительный, добавим вес.
+                if (clickCount === 1) {
+                     document.getElementById('latency-status').className = 'font-bold text-xl ' + 
+                        (isSuspicious ? 'status-virtual' : (isWarning ? 'status-warning' : 'status-physical'));
+                     document.getElementById('latency-status').innerText = status;
+                     document.getElementById('latency-desc').innerText = `Задержка: ${latency.toFixed(2)} ms`;
+                     
+                     if(isSuspicious) riskScore += weights.latency;
+                     else if(isWarning) riskScore += (weights.latency / 2);
+                     updateOverallRisk();
+                } else {
+                     // Просто обновляем текст для наглядности при последующих кликах
+                     document.getElementById('latency-desc').innerText = `Задержка: ${latency.toFixed(2)} ms`;
+                }
+                
+                mousedownTime = 0;
+            }
+        });
+
+        // Инициализация проверок при загрузке страницы
+        window.onload = () => {
+            setTimeout(() => {
+                updateUI('webgl', checkWebGL());
+                updateUI('color', checkColorDepth());
+                updateUI('cores', checkCores());
+                updateUI('fonts', checkFontsAndPlugins());
+            }, 500); // Небольшая задержка для красивого эффекта загрузки
+        };
+    </script>
+</body>
+</html>
