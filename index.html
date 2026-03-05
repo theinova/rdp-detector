@@ -110,36 +110,92 @@
             if (window.document.documentElement.getAttribute("webdriver")) { penalty += 50; triggers.push("DOM webdriver attr"); }
             if (window._phantom || window.callPhantom) { penalty += 80; triggers.push("PhantomJS detected"); }
             if (window.__nightmare) { penalty += 80; triggers.push("NightmareJS detected"); }
-            if (navigator.languages === "" || navigator.languages.length === 0) { penalty += 20; triggers.push("Empty languages (Headless?)"); }
-            
-            // Проверка подмены Notification API (часто делают боты)
-            if (window.Notification && Notification.permission === 'denied' && navigator.userAgent.includes('Chrome')) {
-                // В чистом хроме нельзя просто так заблокировать без запроса
-            }
+            if (navigator.languages === "" || navigator.languages.length === 0) { penalty += 20; triggers.push("Empty languages (Headless)"); }
 
             if (penalty > 0) return { status: 'danger', value: 'Обнаружена автоматизация!', details: triggers.join(', '), penalty };
             return { status: 'safe', value: 'Не обнаружено', details: 'Следы WebDriver отсутствуют', penalty: 0 };
         });
 
-        // 2. HARDWARE & RDP
-        addCheck('Hardware', 'CPU & Memory', '💻', () => {
-            const cores = navigator.hardwareConcurrency || 'N/A';
-            const mem = navigator.deviceMemory || 'N/A';
+        // 2. API SPOOFING & LIES (Вдохновлено CreepJS)
+        addCheck('Security', 'API Spoofing (Lies)', '🕵️', () => {
             let penalty = 0;
-            let status = 'safe';
+            let triggers = [];
 
-            if (cores <= 2) { penalty += 20; status = 'warn'; }
-            if (mem !== 'N/A' && mem <= 2) { penalty += 15; status = 'warn'; }
+            try {
+                // 1. Проверка на подмену Function.prototype.toString (Часто делают боты, чтобы скрыть хуки)
+                const fnToStr = Function.prototype.toString;
+                const fnToStrStr = fnToStr.call(fnToStr);
+                // Regex для поддержки разных движков (V8, SpiderMonkey), но в целом суть одна
+                if (fnToStrStr.indexOf('[native code]') === -1) {
+                    penalty += 60; triggers.push("Function.toString подменен");
+                }
 
-            return { 
-                status: penalty > 0 ? 'warn' : 'safe', 
-                value: `${cores} Ядер / ~${mem}GB RAM`, 
-                details: penalty > 0 ? 'Слабое железо (VM/Дешевый VPS?)' : 'Типичная конфигурация', 
-                penalty 
+                // 2. Проверка дескрипторов. Боты часто делают Object.defineProperty(navigator, 'webdriver', {get: () => false})
+                // В нормальном браузере свойства navigator лежат в его прототипе (Navigator.prototype), а не на самом инстансе.
+                const isGetterSpoofed = (obj, prop) => {
+                    const desc = Object.getOwnPropertyDescriptor(obj, prop);
+                    return desc !== undefined; 
+                };
+
+                if (isGetterSpoofed(navigator, 'userAgent')) { penalty += 40; triggers.push("userAgent mocked (instance getter)"); }
+                if (isGetterSpoofed(navigator, 'webdriver')) { penalty += 50; triggers.push("webdriver mocked (instance getter)"); }
+                if (isGetterSpoofed(navigator, 'hardwareConcurrency')) { penalty += 30; triggers.push("hardwareConcurrency mocked"); }
+
+                // 3. Проверка нативного кода популярных API, которые часто спуфят (например, для обхода проверок разрешений)
+                if (navigator.permissions && navigator.permissions.query) {
+                    if (fnToStr.call(navigator.permissions.query).indexOf('[native code]') === -1) {
+                        penalty += 40; triggers.push("Permissions API подменен");
+                    }
+                }
+
+            } catch (e) {
+                // Игнорируем ошибки доступа
+            }
+
+            return {
+                status: penalty >= 40 ? 'danger' : (penalty > 0 ? 'warn' : 'safe'),
+                value: penalty > 0 ? `${triggers.length} аномалий (Lies)` : 'API не изменены',
+                details: triggers.length > 0 ? triggers.join('; ') : 'Нативные функции выглядят оригинальными (Без хуков)',
+                penalty
             };
         });
 
-        // 3. GPU & WEBGL (Следы RDP/VM)
+        // 3. OS & PLATFORM MISMATCH (CreepJS Heuristics)
+        addCheck('Environment', 'Platform Mismatch', '⚖️', () => {
+            let penalty = 0;
+            let triggers = [];
+            const platform = navigator.platform || '';
+            const ua = navigator.userAgent || '';
+            
+            // Если бот пытается выдать себя за пользователя Windows, но работает на Linux сервере
+            const isWinUA = /Windows/i.test(ua);
+            const isLinuxUA = /Linux/i.test(ua);
+            const isMacUA = /Mac/i.test(ua);
+            
+            const isWinPlat = /Win/i.test(platform);
+            const isLinuxPlat = /Linux/i.test(platform);
+            const isMacPlat = /Mac/i.test(platform);
+
+            if ((isWinUA && !isWinPlat) || (isLinuxUA && !isLinuxPlat) || (isMacUA && !isMacPlat)) {
+                penalty += 60;
+                triggers.push(`UA: ${isWinUA ? 'Win' : isLinuxUA ? 'Linux' : 'Mac'} ≠ Platform: ${platform}`);
+            }
+
+            // iOS/Android mismatch (эмуляторы)
+            if (/iPhone|iPad|Android/i.test(ua) && (isWinPlat || isMacPlat)) {
+                penalty += 60;
+                triggers.push('Mobile UA on Desktop Platform');
+            }
+
+            return {
+                status: penalty > 0 ? 'danger' : 'safe',
+                value: penalty > 0 ? 'Подмена ОС (Mismatch)' : 'Совпадение ОС',
+                details: penalty > 0 ? triggers.join(', ') : `UA и Platform (${platform}) логически совпадают`,
+                penalty
+            };
+        });
+
+        // 4. GPU & WEBGL (Следы RDP/VM)
         addCheck('Hardware', 'Graphics / WebGL', '🎮', () => {
             try {
                 const canvas = document.createElement('canvas');
@@ -166,7 +222,7 @@
             }
         });
 
-        // 4. SCREEN & RDP (Глубина цвета и размер)
+        // 5. SCREEN & RDP (Глубина цвета и размер)
         addCheck('Screen', 'Display & Color Depth', '🖥️', () => {
             const depth = window.screen.colorDepth;
             const width = window.screen.width;
@@ -191,7 +247,25 @@
             };
         });
 
-        // 5. BROWSER FINGERPRINTING (Canvas Hash)
+        // 6. HARDWARE & CPU
+        addCheck('Hardware', 'CPU & Memory', '💻', () => {
+            const cores = navigator.hardwareConcurrency || 'N/A';
+            const mem = navigator.deviceMemory || 'N/A';
+            let penalty = 0;
+            let status = 'safe';
+
+            if (cores <= 2) { penalty += 20; status = 'warn'; }
+            if (mem !== 'N/A' && mem <= 2) { penalty += 15; status = 'warn'; }
+
+            return { 
+                status: penalty > 0 ? 'warn' : 'safe', 
+                value: `${cores} Ядер / ~${mem}GB RAM`, 
+                details: penalty > 0 ? 'Слабое железо (VM/Дешевый VPS?)' : 'Типичная конфигурация', 
+                penalty 
+            };
+        });
+
+        // 7. CANVAS FINGERPRINTING
         addCheck('Fingerprint', 'Canvas Fingerprint', '🎨', () => {
             const canvas = document.createElement('canvas');
             canvas.width = 200; canvas.height = 50;
@@ -218,7 +292,27 @@
             };
         });
 
-        // 6. NETWORK
+        // 8. AUDIO FINGERPRINT BASE
+        addCheck('Fingerprint', 'Audio API', '🔊', () => {
+            try {
+                const audioCtx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 44100, 44100);
+                if (!audioCtx) return { status: 'warn', value: 'N/A', details: 'Audio API отключен', penalty: 10 };
+                
+                // Проверка на наличие синтезатора речи (Часто отсутствует на урезанных VM/Docker)
+                const hasSynth = 'speechSynthesis' in window;
+                
+                return {
+                    status: 'info',
+                    value: 'Audio API Активен',
+                    details: `SpeechSynthesis: ${hasSynth ? 'Доступен' : 'Заблокирован'}`,
+                    penalty: !hasSynth ? 5 : 0
+                };
+            } catch (e) {
+                return { status: 'warn', value: 'Заблокирован', details: 'Нет доступа к Audio API', penalty: 10 };
+            }
+        });
+
+        // 9. NETWORK
         addCheck('Network', 'Connection API', '🌐', () => {
             const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
             if (!conn) return { status: 'info', value: 'N/A', details: 'Network API не поддерживается', penalty: 0 };
@@ -227,21 +321,6 @@
                 status: 'info',
                 value: `${conn.effectiveType || 'unknown'} / ${conn.downlink || 0}Mbps`,
                 details: `RTT: ${conn.rtt}ms, SaveData: ${conn.saveData}`,
-                penalty: 0
-            };
-        });
-
-        // 7. TIMEZONE & LOCATION SPOOFING
-        addCheck('Environment', 'Timezone Consistency', '⏱️', () => {
-            const tzName = Intl.DateTimeFormat().resolvedOptions().timeZone;
-            const offset = new Date().getTimezoneOffset();
-            
-            // Простейшая эвристика проверки (не идеальна, но ловит кривую подмену)
-            // Реальные боты часто подменяют offset, но забывают про Intl API
-            return {
-                status: 'safe',
-                value: tzName,
-                details: `Offset: ${offset} мин.`,
                 penalty: 0
             };
         });
