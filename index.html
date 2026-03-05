@@ -3,349 +3,338 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Anti-Fraud & Bot Detector</title>
+    <title>Enterprise Anti-Fraud & Bot Detector</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #0b1120; color: #f8fafc; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
-        .card { background-color: #1e293b; border: 1px solid #334155; }
+        body { background-color: #050b14; color: #f8fafc; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+        .card { background-color: #111827; border: 1px solid #1f2937; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5); }
         .status-safe { color: #10b981; } /* Green */
         .status-danger { color: #ef4444; } /* Red */
         .status-warn { color: #f59e0b; } /* Yellow */
         .status-info { color: #3b82f6; } /* Blue */
         
-        /* Скроллбар для эстетики */
         ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        ::-webkit-scrollbar-track { background: #050b14; }
+        ::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #374151; }
+
+        /* Анимация сканирования */
+        @keyframes scan {
+            0% { transform: translateY(-100%); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateY(100%); opacity: 0; }
+        }
+        .scanner-line {
+            position: absolute; top: 0; left: 0; right: 0; height: 2px;
+            background: linear-gradient(90deg, transparent, #10b981, transparent);
+            animation: scan 2s infinite linear;
+        }
     </style>
 </head>
-<body class="p-4 md:p-8">
+<body class="p-4 md:p-8 selection:bg-emerald-500/30">
 
     <div class="max-w-7xl mx-auto">
-        <header class="mb-8 border-b border-slate-700 pb-6">
-            <h1 class="text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-emerald-400">
-                Advanced Threat & Bot Forensics
-            </h1>
-            <p class="text-slate-400 mt-2 text-lg">Комплексный анализ окружения браузера: RDP, Виртуалки, Selenium, Puppeteer, Подмена отпечатков.</p>
+        <header class="mb-8 border-b border-slate-800 pb-6 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+            <div>
+                <h1 class="text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-emerald-400 to-teal-400 tracking-tight">
+                    Enterprise Trust Matrix
+                </h1>
+                <p class="text-slate-400 mt-2 text-lg">Глубокий анализ: RDP, Эмуляторы, Подделка API, Рендеринг.</p>
+            </div>
+            <button onclick="runAllChecks()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-6 py-2 rounded-lg font-semibold transition-colors border border-slate-700 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                Перезапустить анализ
+            </button>
         </header>
 
         <!-- Дашборд Риска -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            <div class="card rounded-2xl p-8 lg:col-span-2 flex flex-col justify-center relative overflow-hidden shadow-2xl">
-                <div class="absolute -right-20 -top-20 w-64 h-64 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob"></div>
-                <div class="absolute -left-20 -bottom-20 w-64 h-64 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-2000"></div>
+            <div class="card rounded-2xl p-8 lg:col-span-2 flex flex-col justify-center relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5"></div>
                 
-                <h2 class="text-xl text-slate-300 mb-4 font-semibold z-10">Общий уровень доверия (Trust Score)</h2>
+                <h2 class="text-xl text-slate-400 mb-4 font-semibold z-10 flex items-center gap-2">
+                    Общий уровень доверия (Trust Score)
+                    <span id="scan-indicator" class="relative flex h-3 w-3 hidden">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                    </span>
+                </h2>
+                
                 <div class="flex items-end gap-4 z-10">
-                    <span id="trust-score" class="text-7xl font-black status-safe">100</span>
-                    <span class="text-2xl text-slate-500 mb-2">/ 100</span>
+                    <span id="trust-score" class="text-7xl font-black status-info">...</span>
+                    <span class="text-2xl text-slate-600 mb-2">/ 100</span>
                 </div>
                 
-                <div class="w-full bg-slate-800 h-4 mt-6 rounded-full overflow-hidden shadow-inner z-10">
-                    <div id="trust-bar" class="bg-emerald-500 h-full transition-all duration-1000 ease-out" style="width: 100%;"></div>
+                <div class="w-full bg-slate-900 h-4 mt-6 rounded-full overflow-hidden shadow-inner z-10 border border-slate-800">
+                    <div id="trust-bar" class="bg-blue-500 h-full transition-all duration-1000 ease-out" style="width: 0%;"></div>
                 </div>
                 
-                <p id="trust-verdict" class="mt-4 text-lg font-medium text-emerald-400 z-10">Вероятно, реальный человек на физическом устройстве</p>
+                <p id="trust-verdict" class="mt-4 text-lg font-medium text-blue-400 z-10">Идет глубокое сканирование окружения...</p>
             </div>
 
-            <div class="card rounded-2xl p-6 shadow-xl flex flex-col">
-                <h3 class="font-semibold text-lg text-slate-300 border-b border-slate-700 pb-2 mb-4">Поведенческий анализ</h3>
-                <div class="flex-1 space-y-4">
+            <div class="card rounded-2xl p-6 flex flex-col relative overflow-hidden">
+                <div class="scanner-line hidden" id="scanner-line"></div>
+                <h3 class="font-semibold text-lg text-slate-300 border-b border-slate-800 pb-2 mb-4">Поведенческая биометрия</h3>
+                <div class="flex-1 space-y-5">
                     <div>
-                        <div class="text-sm text-slate-400">Движение мыши (Энтропия)</div>
-                        <div id="mouse-status" class="font-mono font-bold text-slate-200">Ожидание движения...</div>
+                        <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Энтропия мыши</div>
+                        <div id="mouse-status" class="font-mono text-sm text-slate-300">Ожидание движения...</div>
                     </div>
                     <div>
-                        <div class="text-sm text-slate-400">Скорость клика (Latency)</div>
-                        <div id="click-status" class="font-mono font-bold text-slate-200">Ожидание клика...</div>
+                        <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Задержка клика (Latency)</div>
+                        <div id="click-status" class="font-mono text-sm text-slate-300">Ожидание клика...</div>
                     </div>
                     <div>
-                        <div class="text-sm text-slate-400">Видимость вкладки</div>
-                        <div id="visibility-status" class="font-mono font-bold text-emerald-400">Активна</div>
+                        <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Видимость окна</div>
+                        <div id="visibility-status" class="font-mono text-sm text-emerald-400">В фокусе</div>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Сетка модулей -->
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" id="modules-container">
-            <!-- Сюда JS будет динамически рендерить карточки -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" id="modules-container">
+            <!-- Карточки рендерятся здесь -->
         </div>
     </div>
 
+    <!-- Скрытый контейнер для рендеринга и проверок -->
+    <div id="stealth-container" style="position: absolute; left: -9999px; top: -9999px; visibility: hidden;"></div>
+
     <script>
         // --- УТИЛИТЫ ---
-        
-        // Быстрый хэш (Cyrb53) для создания отпечатков из строк (Canvas/Audio данных)
         const cyrb53 = (str, seed = 0) => {
             let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
             for (let i = 0, ch; i < str.length; i++) {
                 ch = str.charCodeAt(i);
-                h1 = Math.imul(h1 ^ ch, 2654435761);
-                h2 = Math.imul(h2 ^ ch, 1597334677);
+                h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677);
             }
             h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
             h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
             return 4294967296 * (2097151 & h2) + (h1 >>> 0);
         };
 
-        // --- ДВИЖОК АНАЛИЗА ---
-        
         let totalPenalty = 0;
         const checks = [];
 
-        function addCheck(category, name, icon, execute) {
-            checks.push({ category, name, icon, execute });
+        // Обновленная функция регистрации (теперь поддерживает async)
+        function addCheck(category, name, icon, executeFn) {
+            checks.push({ category, name, icon, execute: executeFn });
         }
 
         // --- МОДУЛИ ПРОВЕРОК ---
 
-        // 1. WEBDRIVER & AUTOMATION (Headless, Selenium, Puppeteer)
-        addCheck('Automation', 'WebDriver & Bots', '🤖', () => {
-            let penalty = 0;
-            let triggers = [];
-
-            if (navigator.webdriver) { penalty += 50; triggers.push("navigator.webdriver=true"); }
-            if (window.document.documentElement.getAttribute("webdriver")) { penalty += 50; triggers.push("DOM webdriver attr"); }
-            if (window._phantom || window.callPhantom) { penalty += 80; triggers.push("PhantomJS detected"); }
-            if (window.__nightmare) { penalty += 80; triggers.push("NightmareJS detected"); }
-            if (navigator.languages === "" || navigator.languages.length === 0) { penalty += 20; triggers.push("Empty languages (Headless)"); }
-
-            if (penalty > 0) return { status: 'danger', value: 'Обнаружена автоматизация!', details: triggers.join(', '), penalty };
-            return { status: 'safe', value: 'Не обнаружено', details: 'Следы WebDriver отсутствуют', penalty: 0 };
+        // 1. WebDriver & Automation
+        addCheck('Bot Detection', 'WebDriver & Headless', '🤖', async () => {
+            let penalty = 0; let triggers = [];
+            if (navigator.webdriver) { penalty += 50; triggers.push("navigator.webdriver"); }
+            if (document.documentElement.getAttribute("webdriver")) { penalty += 50; triggers.push("DOM attr"); }
+            if (window._phantom || window.callPhantom) { penalty += 80; triggers.push("PhantomJS"); }
+            if (!navigator.languages || navigator.languages.length === 0) { penalty += 20; triggers.push("No languages"); }
+            
+            return {
+                status: penalty > 0 ? 'danger' : 'safe',
+                value: penalty > 0 ? 'Automation Detected' : 'Clean',
+                details: triggers.length > 0 ? triggers.join(', ') : 'Следов автоматизации нет',
+                penalty
+            };
         });
 
-        // 2. API SPOOFING & LIES (Вдохновлено CreepJS)
-        addCheck('Security', 'API Spoofing (Lies)', '🕵️', () => {
-            let penalty = 0;
-            let triggers = [];
-
+        // 2. API Spoofing (Lies)
+        addCheck('Security', 'API Spoofing (Lies)', '🕵️', async () => {
+            let penalty = 0; let triggers = [];
             try {
-                // 1. Проверка на подмену Function.prototype.toString (Часто делают боты, чтобы скрыть хуки)
                 const fnToStr = Function.prototype.toString;
-                const fnToStrStr = fnToStr.call(fnToStr);
-                // Regex для поддержки разных движков (V8, SpiderMonkey), но в целом суть одна
-                if (fnToStrStr.indexOf('[native code]') === -1) {
-                    penalty += 60; triggers.push("Function.toString подменен");
-                }
-
-                // 2. Проверка дескрипторов. Боты часто делают Object.defineProperty(navigator, 'webdriver', {get: () => false})
-                // В нормальном браузере свойства navigator лежат в его прототипе (Navigator.prototype), а не на самом инстансе.
-                const isGetterSpoofed = (obj, prop) => {
-                    const desc = Object.getOwnPropertyDescriptor(obj, prop);
-                    return desc !== undefined; 
-                };
-
-                if (isGetterSpoofed(navigator, 'userAgent')) { penalty += 40; triggers.push("userAgent mocked (instance getter)"); }
-                if (isGetterSpoofed(navigator, 'webdriver')) { penalty += 50; triggers.push("webdriver mocked (instance getter)"); }
-                if (isGetterSpoofed(navigator, 'hardwareConcurrency')) { penalty += 30; triggers.push("hardwareConcurrency mocked"); }
-
-                // 3. Проверка нативного кода популярных API, которые часто спуфят (например, для обхода проверок разрешений)
-                if (navigator.permissions && navigator.permissions.query) {
-                    if (fnToStr.call(navigator.permissions.query).indexOf('[native code]') === -1) {
-                        penalty += 40; triggers.push("Permissions API подменен");
-                    }
-                }
-
-            } catch (e) {
-                // Игнорируем ошибки доступа
-            }
+                if (fnToStr.call(fnToStr).indexOf('[native code]') === -1) { penalty += 60; triggers.push("Func.toString хук"); }
+                
+                const isSpoofed = (obj, prop) => Object.getOwnPropertyDescriptor(obj, prop) !== undefined;
+                if (isSpoofed(navigator, 'userAgent')) { penalty += 40; triggers.push("UA getter spoof"); }
+                if (isSpoofed(navigator, 'hardwareConcurrency')) { penalty += 30; triggers.push("Cores spoof"); }
+            } catch (e) {}
 
             return {
                 status: penalty >= 40 ? 'danger' : (penalty > 0 ? 'warn' : 'safe'),
-                value: penalty > 0 ? `${triggers.length} аномалий (Lies)` : 'API не изменены',
-                details: triggers.length > 0 ? triggers.join('; ') : 'Нативные функции выглядят оригинальными (Без хуков)',
+                value: penalty > 0 ? 'API Modified' : 'Native API',
+                details: penalty > 0 ? triggers.join(', ') : 'Нативные функции не изменены',
                 penalty
             };
         });
 
-        // 3. OS & PLATFORM MISMATCH (CreepJS Heuristics)
-        addCheck('Environment', 'Platform Mismatch', '⚖️', () => {
-            let penalty = 0;
-            let triggers = [];
+        // 3. Platform & Emulation Mismatch
+        addCheck('Environment', 'Emulation Mismatch', '📱', async () => {
+            let penalty = 0; let triggers = [];
+            const ua = navigator.userAgent;
+            const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+            const touchPoints = navigator.maxTouchPoints || 0;
+
+            // Бот выдает себя за мобилку, но нет поддержки касаний
+            if (isMobileUA && touchPoints === 0) {
+                penalty += 60; triggers.push("Mobile UA but 0 TouchPoints");
+            }
+            
+            // Проверка ОС
             const platform = navigator.platform || '';
-            const ua = navigator.userAgent || '';
-            
-            // Если бот пытается выдать себя за пользователя Windows, но работает на Linux сервере
-            const isWinUA = /Windows/i.test(ua);
-            const isLinuxUA = /Linux/i.test(ua);
-            const isMacUA = /Mac/i.test(ua);
-            
-            const isWinPlat = /Win/i.test(platform);
-            const isLinuxPlat = /Linux/i.test(platform);
-            const isMacPlat = /Mac/i.test(platform);
-
-            if ((isWinUA && !isWinPlat) || (isLinuxUA && !isLinuxPlat) || (isMacUA && !isMacPlat)) {
-                penalty += 60;
-                triggers.push(`UA: ${isWinUA ? 'Win' : isLinuxUA ? 'Linux' : 'Mac'} ≠ Platform: ${platform}`);
-            }
-
-            // iOS/Android mismatch (эмуляторы)
-            if (/iPhone|iPad|Android/i.test(ua) && (isWinPlat || isMacPlat)) {
-                penalty += 60;
-                triggers.push('Mobile UA on Desktop Platform');
-            }
+            if (/Windows/i.test(ua) && !/Win/i.test(platform)) { penalty += 40; triggers.push(`UA: Win ≠ Plat: ${platform}`); }
+            if (/Linux/i.test(ua) && !/Linux/i.test(platform)) { penalty += 40; triggers.push(`UA: Linux ≠ Plat: ${platform}`); }
 
             return {
                 status: penalty > 0 ? 'danger' : 'safe',
-                value: penalty > 0 ? 'Подмена ОС (Mismatch)' : 'Совпадение ОС',
-                details: penalty > 0 ? triggers.join(', ') : `UA и Platform (${platform}) логически совпадают`,
+                value: penalty > 0 ? 'Mismatch Found' : 'Logical Match',
+                details: penalty > 0 ? triggers.join('; ') : `UA совпадает с железом (${touchPoints} touches)`,
                 penalty
             };
         });
 
-        // 4. GPU & WEBGL (Следы RDP/VM)
-        addCheck('Hardware', 'Graphics / WebGL', '🎮', () => {
+        // 4. ClientRects Fingerprinting (Субпиксельный рендеринг)
+        addCheck('Rendering', 'DOM ClientRects', '📐', async () => {
+            const container = document.getElementById('stealth-container');
+            const el = document.createElement('div');
+            // Создаем сложный элемент, который разные ОС/браузеры отрендерят с микро-разницей
+            el.innerHTML = '<div style="font-size: 14.13px; padding: 1.2px; transform: rotate(1deg);">Testing ClientRects engine variance</div>';
+            container.appendChild(el);
+            
+            const rect = el.getBoundingClientRect();
+            // Берем точные значения с плавающей точкой
+            const hashSource = `${rect.width},${rect.height},${rect.top},${rect.left}`;
+            const hash = cyrb53(hashSource).toString(16);
+            
+            container.innerHTML = ''; // Очистка
+            
+            return { status: 'info', value: `Hash: ${hash.toUpperCase()}`, details: `W:${rect.width.toFixed(3)} H:${rect.height.toFixed(3)}`, penalty: 0 };
+        });
+
+        // 5. Font Metrics Fingerprinting
+        addCheck('Environment', 'System Fonts', '🔤', async () => {
+            const container = document.getElementById('stealth-container');
+            const text = 'mmmmmmmmmmlli';
+            const baseFonts = ['monospace', 'sans-serif', 'serif'];
+            
+            // Шрифты для проверки (Windows, Mac, Linux/Server)
+            const testFonts = ['Segoe UI', 'San Francisco', 'Roboto', 'Ubuntu', 'Consolas'];
+            
+            const span = document.createElement('span');
+            span.style.fontSize = '72px';
+            span.innerHTML = text;
+            
+            let detected = [];
+            
+            for (let font of testFonts) {
+                let isInstalled = false;
+                for (let baseFont of baseFonts) {
+                    span.style.fontFamily = `"${font}", ${baseFont}`;
+                    container.appendChild(span);
+                    const widthWidthTest = span.offsetWidth;
+                    container.removeChild(span);
+                    
+                    span.style.fontFamily = baseFont;
+                    container.appendChild(span);
+                    const widthBase = span.offsetWidth;
+                    container.removeChild(span);
+                    
+                    if (widthWidthTest !== widthBase) { isInstalled = true; break; }
+                }
+                if (isInstalled) detected.push(font);
+            }
+
+            let penalty = 0;
+            // Серверные виртуалки Linux часто не имеют ни Segoe, ни SF, ни UbuntuDesktop шрифтов
+            if (detected.length === 0 && !/Android|iOS/i.test(navigator.userAgent)) {
+                penalty += 30; // Подозрение на headless linux
+            }
+
+            return {
+                status: penalty > 0 ? 'warn' : 'info',
+                value: `${detected.length} OS Fonts Found`,
+                details: detected.length > 0 ? detected.join(', ') : 'Базовые системные шрифты не найдены (Linux Server?)',
+                penalty
+            };
+        });
+
+        // 6. Media Devices (Камеры / Микрофоны)
+        addCheck('Hardware', 'Media Devices', '📸', async () => {
+            let penalty = 0;
+            let details = 'Нет доступа к API';
+            let value = 'N/A';
+            let status = 'info';
+
+            try {
+                if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    const audio = devices.filter(d => d.kind === 'audioinput').length;
+                    const video = devices.filter(d => d.kind === 'videoinput').length;
+                    
+                    value = `Mic: ${audio} | Cam: ${video}`;
+                    details = `Найдено устройств: ${devices.length}`;
+
+                    // Виртуальные машины на серверах обычно имеют 0 аудио и 0 видео устройств
+                    if (audio === 0 && video === 0) {
+                        penalty += 15;
+                        status = 'warn';
+                        details = 'Мультимедиа устройства отсутствуют (VM/Server?)';
+                    } else {
+                        status = 'safe';
+                    }
+                }
+            } catch (e) {
+                details = 'Ошибка чтения MediaDevices';
+            }
+
+            return { status, value, details, penalty };
+        });
+
+        // 7. GPU & WebGL (Hardware Acceleration)
+        addCheck('Hardware', 'GPU Renderer', '🎮', async () => {
             try {
                 const canvas = document.createElement('canvas');
                 const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-                if (!gl) return { status: 'danger', value: 'WebGL Отключен', details: 'Подозрительно скрытый Canvas', penalty: 30 };
+                if (!gl) return { status: 'danger', value: 'WebGL Disabled', details: 'Скрытый Canvas', penalty: 30 };
                 
                 const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-                if (!debugInfo) return { status: 'warn', value: 'Renderer Скрыт', details: 'WEBGL_debug_renderer_info заблокирован', penalty: 20 };
-
-                const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
-                const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+                const renderer = debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
                 
                 const vmRegex = /Microsoft Basic Render Driver|VMware|SwiftShader|VirtualBox|llvmpipe|Mesa/i;
                 const isVirtual = vmRegex.test(renderer);
 
                 return {
                     status: isVirtual ? 'danger' : 'safe',
-                    value: isVirtual ? 'Software / VM Renderer' : 'Hardware GPU',
+                    value: isVirtual ? 'Software GPU' : 'Hardware GPU',
                     details: renderer,
                     penalty: isVirtual ? 40 : 0
                 };
-            } catch (e) {
-                return { status: 'warn', value: 'Ошибка доступа', details: e.message, penalty: 10 };
-            }
+            } catch (e) { return { status: 'warn', value: 'Error', details: 'Доступ закрыт', penalty: 10 }; }
         });
 
-        // 5. SCREEN & RDP (Глубина цвета и размер)
-        addCheck('Screen', 'Display & Color Depth', '🖥️', () => {
+        // 8. Screen & RDP
+        addCheck('Screen', 'Resolution & Depth', '🖥️', async () => {
             const depth = window.screen.colorDepth;
-            const width = window.screen.width;
-            const height = window.screen.height;
-            const innerW = window.innerWidth;
-            const innerH = window.innerHeight;
+            const w = window.screen.width, h = window.screen.height;
+            const iw = window.innerWidth, ih = window.innerHeight;
 
-            let penalty = 0;
-            let triggers = [];
-
-            if (depth < 24) { penalty += 30; triggers.push(`${depth}-bit (RDP/VNC)`); }
-            if (width === 0 || height === 0) { penalty += 50; triggers.push("Скрытый экран (Headless)"); }
-            
-            // Аномалия: окно больше экрана (бывает при подмене)
-            if (innerW > width || innerH > height) { penalty += 20; triggers.push("Окно больше монитора"); }
+            let penalty = 0; let triggers = [];
+            if (depth < 24) { penalty += 30; triggers.push(`${depth}-bit RDP`); }
+            if (iw > w || ih > h) { penalty += 20; triggers.push("Window > Monitor (Spoof)"); }
 
             return {
                 status: penalty >= 30 ? 'danger' : (penalty > 0 ? 'warn' : 'safe'),
-                value: `${width}x${height} @ ${depth}bit`,
-                details: triggers.length > 0 ? triggers.join(', ') : 'Аномалий экрана не найдено',
+                value: `${w}x${h} @ ${depth}bpp`,
+                details: triggers.length > 0 ? triggers.join(', ') : 'Нормальный дисплей',
                 penalty
             };
         });
 
-        // 6. HARDWARE & CPU
-        addCheck('Hardware', 'CPU & Memory', '💻', () => {
-            const cores = navigator.hardwareConcurrency || 'N/A';
-            const mem = navigator.deviceMemory || 'N/A';
-            let penalty = 0;
-            let status = 'safe';
-
-            if (cores <= 2) { penalty += 20; status = 'warn'; }
-            if (mem !== 'N/A' && mem <= 2) { penalty += 15; status = 'warn'; }
-
-            return { 
-                status: penalty > 0 ? 'warn' : 'safe', 
-                value: `${cores} Ядер / ~${mem}GB RAM`, 
-                details: penalty > 0 ? 'Слабое железо (VM/Дешевый VPS?)' : 'Типичная конфигурация', 
-                penalty 
-            };
-        });
-
-        // 7. CANVAS FINGERPRINTING
-        addCheck('Fingerprint', 'Canvas Fingerprint', '🎨', () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = 200; canvas.height = 50;
-            const ctx = canvas.getContext('2d');
-            
-            // Отрисовка сложного текста со смешиванием
-            ctx.textBaseline = "top";
-            ctx.font = "14px 'Arial'";
-            ctx.textBaseline = "alphabetic";
-            ctx.fillStyle = "#f60";
-            ctx.fillRect(125,1,62,20);
-            ctx.fillStyle = "#069";
-            ctx.fillText("Fingerprint 🤖", 2, 15);
-            ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
-            ctx.fillText("Fingerprint 🤖", 4, 17);
-            
-            const hash = cyrb53(canvas.toDataURL()).toString(16);
-            
-            return {
-                status: 'info',
-                value: `Hash: ${hash.toUpperCase()}`,
-                details: 'Уникальный отпечаток отрисовки текста и графики',
-                penalty: 0
-            };
-        });
-
-        // 8. AUDIO FINGERPRINT BASE
-        addCheck('Fingerprint', 'Audio API', '🔊', () => {
-            try {
-                const audioCtx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 44100, 44100);
-                if (!audioCtx) return { status: 'warn', value: 'N/A', details: 'Audio API отключен', penalty: 10 };
-                
-                // Проверка на наличие синтезатора речи (Часто отсутствует на урезанных VM/Docker)
-                const hasSynth = 'speechSynthesis' in window;
-                
-                return {
-                    status: 'info',
-                    value: 'Audio API Активен',
-                    details: `SpeechSynthesis: ${hasSynth ? 'Доступен' : 'Заблокирован'}`,
-                    penalty: !hasSynth ? 5 : 0
-                };
-            } catch (e) {
-                return { status: 'warn', value: 'Заблокирован', details: 'Нет доступа к Audio API', penalty: 10 };
-            }
-        });
-
-        // 9. NETWORK
-        addCheck('Network', 'Connection API', '🌐', () => {
-            const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-            if (!conn) return { status: 'info', value: 'N/A', details: 'Network API не поддерживается', penalty: 0 };
-            
-            return {
-                status: 'info',
-                value: `${conn.effectiveType || 'unknown'} / ${conn.downlink || 0}Mbps`,
-                details: `RTT: ${conn.rtt}ms, SaveData: ${conn.saveData}`,
-                penalty: 0
-            };
-        });
-
-        // --- ПОВЕДЕНЧЕСКАЯ БИОМЕТРИЯ (Движение и Клики) ---
-        let mouseEvents = 0;
-        let lastMousePos = {x: 0, y: 0};
-        let mousedownTime = 0;
-        let hasHumanMovement = false;
+        // --- ПОВЕДЕНЧЕСКАЯ БИОМЕТРИЯ ---
+        let mouseEvents = 0; let lastMousePos = {x: 0, y: 0}; let mousedownTime = 0; let hasHumanMovement = false;
 
         document.addEventListener('mousemove', (e) => {
-            if (!e.isTrusted) return; // Программные эмуляции (bot)
-            
-            // Простейший расчет расстояния для фильтрации микро-дрожаний
+            if (!e.isTrusted) return;
             const dist = Math.sqrt(Math.pow(e.clientX - lastMousePos.x, 2) + Math.pow(e.clientY - lastMousePos.y, 2));
-            if (dist > 5) {
-                mouseEvents++;
-                lastMousePos = {x: e.clientX, y: e.clientY};
-            }
+            if (dist > 5) { mouseEvents++; lastMousePos = {x: e.clientX, y: e.clientY}; }
 
-            if (mouseEvents > 15) {
+            if (mouseEvents > 10 && !hasHumanMovement) {
                 hasHumanMovement = true;
                 const el = document.getElementById('mouse-status');
-                el.innerText = `Живое движение (${mouseEvents} pts)`;
-                el.className = 'font-mono font-bold text-emerald-400';
+                el.innerText = `Подтверждено (Живой)`; el.className = 'font-mono text-sm font-bold text-emerald-400';
+                applyDynamicPenalty(-10); // Поощряем за живое движение
             }
         });
 
@@ -354,17 +343,11 @@
             if (mousedownTime && e.isTrusted) {
                 const latency = performance.now() - mousedownTime;
                 const el = document.getElementById('click-status');
-                
                 if (latency < 20) {
-                    el.innerText = `${latency.toFixed(1)}ms (Слишком быстро/Бот!)`;
-                    el.className = 'font-mono font-bold text-red-500';
-                    applyDynamicPenalty(20); // Штраф за программный клик
-                } else if (latency > 500) {
-                    el.innerText = `${latency.toFixed(1)}ms (Аномалия/RDP Lag)`;
-                    el.className = 'font-mono font-bold text-amber-500';
+                    el.innerText = `${latency.toFixed(1)}ms (Бот!)`; el.className = 'font-mono text-sm font-bold text-red-500';
+                    applyDynamicPenalty(30);
                 } else {
-                    el.innerText = `${latency.toFixed(1)}ms (Норма)`;
-                    el.className = 'font-mono font-bold text-emerald-400';
+                    el.innerText = `${latency.toFixed(1)}ms (Норма)`; el.className = 'font-mono text-sm font-bold text-emerald-400';
                 }
                 mousedownTime = 0;
             }
@@ -372,49 +355,73 @@
 
         document.addEventListener('visibilitychange', () => {
             const el = document.getElementById('visibility-status');
-            if (document.hidden) {
-                el.innerText = 'В фоне';
-                el.className = 'font-mono font-bold text-slate-500';
-            } else {
-                el.innerText = 'Активна';
-                el.className = 'font-mono font-bold text-emerald-400';
-            }
+            if (document.hidden) { el.innerText = 'Свернуто'; el.className = 'font-mono text-sm font-bold text-slate-500'; } 
+            else { el.innerText = 'В фокусе'; el.className = 'font-mono text-sm font-bold text-emerald-400'; }
         });
 
-        // --- РЕНДЕРИНГ UI ---
+        // --- ДВИЖОК РЕНДЕРИНГА (ASYNC) ---
 
-        function renderModules() {
+        async function runAllChecks() {
             const container = document.getElementById('modules-container');
+            const scanIndicator = document.getElementById('scan-indicator');
+            const scannerLine = document.getElementById('scanner-line');
+            const trustScoreEl = document.getElementById('trust-score');
+            
             container.innerHTML = '';
             totalPenalty = 0;
+            trustScoreEl.innerText = '...';
+            trustScoreEl.className = 'text-7xl font-black text-slate-500 animate-pulse';
+            scanIndicator.classList.remove('hidden');
+            scannerLine.classList.remove('hidden');
 
-            checks.forEach(check => {
-                const result = check.execute();
+            // Рендерим скелетоны для красоты загрузки
+            checks.forEach(() => {
+                const div = document.createElement('div');
+                div.className = 'card rounded-xl p-5 shadow-sm border border-slate-800/50 animate-pulse h-28';
+                div.innerHTML = '<div class="h-4 bg-slate-800 rounded w-1/2 mb-4"></div><div class="h-6 bg-slate-800 rounded w-3/4 mb-2"></div><div class="h-3 bg-slate-800 rounded w-full"></div>';
+                container.appendChild(div);
+            });
+
+            // Выполняем проверки асинхронно
+            const results = await Promise.all(checks.map(async check => {
+                const start = performance.now();
+                const result = await check.execute();
+                const time = (performance.now() - start).toFixed(1);
+                return { check, result, time };
+            }));
+
+            // Очищаем скелетоны и рендерим результаты
+            container.innerHTML = '';
+            results.forEach(({check, result, time}) => {
                 totalPenalty += result.penalty;
 
-                let colorClass = 'text-slate-200';
-                let iconColor = 'text-slate-400';
-                if (result.status === 'danger') { colorClass = 'status-danger'; iconColor = 'text-red-500'; }
-                if (result.status === 'warn') { colorClass = 'status-warn'; iconColor = 'text-amber-500'; }
-                if (result.status === 'safe') { colorClass = 'status-safe'; iconColor = 'text-emerald-500'; }
-                if (result.status === 'info') { colorClass = 'status-info'; iconColor = 'text-blue-400'; }
+                let colorClass = 'text-slate-200'; let iconColor = 'text-slate-400'; let bgGlow = '';
+                if (result.status === 'danger') { colorClass = 'status-danger'; iconColor = 'text-red-500'; bgGlow = 'hover:border-red-500/50 hover:shadow-[0_0_15px_rgba(239,68,68,0.1)]';}
+                if (result.status === 'warn') { colorClass = 'status-warn'; iconColor = 'text-amber-500'; bgGlow = 'hover:border-amber-500/50';}
+                if (result.status === 'safe') { colorClass = 'status-safe'; iconColor = 'text-emerald-500'; bgGlow = 'hover:border-emerald-500/50';}
+                if (result.status === 'info') { colorClass = 'status-info'; iconColor = 'text-blue-400'; bgGlow = 'hover:border-blue-500/50';}
 
                 const card = document.createElement('div');
-                card.className = 'card rounded-xl p-5 shadow-lg flex flex-col hover:border-slate-500 transition-colors duration-300';
+                card.className = `card rounded-xl p-5 shadow-lg flex flex-col transition-all duration-300 ${bgGlow}`;
                 card.innerHTML = `
                     <div class="flex justify-between items-start mb-2">
                         <div class="flex items-center gap-2">
                             <span class="text-xl ${iconColor}">${check.icon}</span>
-                            <h3 class="font-semibold text-sm text-slate-400 uppercase tracking-wider">${check.name}</h3>
+                            <h3 class="font-semibold text-[11px] text-slate-400 uppercase tracking-wider">${check.name}</h3>
                         </div>
-                        ${result.penalty > 0 ? `<span class="bg-red-500/20 text-red-400 text-xs px-2 py-1 rounded font-bold">+${result.penalty} Risk</span>` : ''}
+                        <div class="flex gap-2 items-center">
+                            <span class="text-[10px] text-slate-600">${time}ms</span>
+                            ${result.penalty > 0 ? `<span class="bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] px-1.5 py-0.5 rounded font-bold">+${result.penalty} Risk</span>` : ''}
+                        </div>
                     </div>
-                    <div class="font-mono font-bold text-lg mt-2 mb-1 truncate ${colorClass}" title="${result.value}">${result.value}</div>
-                    <p class="text-xs text-slate-500 mt-auto line-clamp-2">${result.details}</p>
+                    <div class="font-mono font-bold text-base mt-1 mb-1 truncate ${colorClass}" title="${result.value}">${result.value}</div>
+                    <p class="text-xs text-slate-500 mt-auto line-clamp-2 leading-tight">${result.details}</p>
                 `;
                 container.appendChild(card);
             });
 
+            scanIndicator.classList.add('hidden');
+            scannerLine.classList.add('hidden');
             updateTrustScore();
         }
 
@@ -425,8 +432,8 @@
 
         function updateTrustScore() {
             let trust = 100 - totalPenalty;
-            if (!hasHumanMovement && totalPenalty > 0) trust -= 10; // Доп штраф если нет движения мыши
-            trust = Math.max(0, Math.min(100, trust)); // Clamp 0-100
+            if (!hasHumanMovement && totalPenalty > 0) trust -= 15; // Сильный штраф, если есть проблемы И нет движения мыши
+            trust = Math.max(0, Math.min(100, trust)); // Диапазон 0-100
 
             const scoreEl = document.getElementById('trust-score');
             const barEl = document.getElementById('trust-bar');
@@ -435,28 +442,26 @@
             scoreEl.innerText = trust;
             barEl.style.width = `${trust}%`;
 
-            if (trust >= 80) {
+            if (trust >= 85) {
                 scoreEl.className = 'text-7xl font-black status-safe';
-                barEl.className = 'bg-emerald-500 h-full transition-all duration-1000 ease-out';
-                verdictEl.innerText = "Вероятно, реальный человек на физическом устройстве";
+                barEl.className = 'bg-emerald-500 h-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(16,185,129,0.5)]';
+                verdictEl.innerText = "Verified: Человек на физическом устройстве";
                 verdictEl.className = "mt-4 text-lg font-medium text-emerald-400 z-10";
-            } else if (trust >= 40) {
+            } else if (trust >= 50) {
                 scoreEl.className = 'text-7xl font-black status-warn';
-                barEl.className = 'bg-amber-500 h-full transition-all duration-1000 ease-out';
-                verdictEl.innerText = "Подозрительная активность (Возможна VM или RDP)";
+                barEl.className = 'bg-amber-500 h-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(245,158,11,0.5)]';
+                verdictEl.innerText = "Warning: Подозрительная среда (Возможен RDP/VPN/VM)";
                 verdictEl.className = "mt-4 text-lg font-medium text-amber-400 z-10";
             } else {
                 scoreEl.className = 'text-7xl font-black status-danger';
-                barEl.className = 'bg-red-500 h-full transition-all duration-1000 ease-out shadow-[0_0_15px_rgba(239,68,68,0.5)]';
-                verdictEl.innerText = "ОБНАРУЖЕН БОТ ИЛИ ИНСТРУМЕНТ АВТОМАТИЗАЦИИ";
+                barEl.className = 'bg-red-500 h-full transition-all duration-1000 ease-out shadow-[0_0_15px_rgba(239,68,68,0.8)]';
+                verdictEl.innerText = "Critical: ВЫСОКАЯ ВЕРОЯТНОСТЬ БОТА ИЛИ ЭМУЛЯТОРА";
                 verdictEl.className = "mt-4 text-lg font-bold text-red-400 z-10 animate-pulse";
             }
         }
 
-        // Инициализация
-        window.onload = () => {
-            setTimeout(renderModules, 300); // Небольшая задержка для того, чтобы DOM и шрифты прогрузились (важно для Canvas)
-        };
+        // Запуск
+        window.onload = () => setTimeout(runAllChecks, 500);
 
     </script>
 </body>
